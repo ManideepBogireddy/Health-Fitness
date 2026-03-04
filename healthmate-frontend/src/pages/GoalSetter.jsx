@@ -9,12 +9,14 @@ const GoalSetter = () => {
     const [goals, setGoals] = useState({
         calories: '',
         water: '',
-        sleep: ''
+        sleep: '',
+        steps: '10000'
     });
     const [stats, setStats] = useState({
         calories: 0,
         water: 0,
-        sleep: 0
+        sleep: 0,
+        steps: 0
     });
     const [plan, setPlan] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -57,19 +59,22 @@ const GoalSetter = () => {
                 setGoals({
                     calories: todayLog.dailyCalorieTarget || extractNum(planRes.data?.dailyCalories?.toString()),
                     water: todayLog.dailyWaterTarget || extractNum(planRes.data?.dailyWaterIntake),
-                    sleep: todayLog.dailySleepTarget || extractNum(planRes.data?.sleepRecommendation)
+                    sleep: todayLog.dailySleepTarget || extractNum(planRes.data?.sleepRecommendation),
+                    steps: todayLog.dailyStepsTarget || '10000'
                 });
                 setStats({
                     calories: 0,
                     water: todayLog.waterIntake || 0,
-                    sleep: todayLog.sleepDuration || 0
+                    sleep: todayLog.sleepDuration || 0,
+                    steps: todayLog.steps || 0
                 });
             } else {
-                setGoals({
+                setGoals(prev => ({
+                    ...prev,
                     calories: extractNum(planRes.data?.dailyCalories?.toString()),
                     water: extractNum(planRes.data?.dailyWaterIntake),
                     sleep: extractNum(planRes.data?.sleepRecommendation)
-                });
+                }));
             }
 
             const calorieIntake = mealsRes.data
@@ -96,14 +101,16 @@ const GoalSetter = () => {
 
             await UserService.logDailyStats(
                 today,
-                todayLog.weight || 0,
+                todayLog.weight || currentUser.weight || 0,
                 0,
                 todayLog.waterIntake || 0,
                 todayLog.sleepDuration || 0,
                 todayLog.notes || '',
                 parseInt(goals.calories) || 0,
                 parseFloat(goals.water) || 0,
-                parseFloat(goals.sleep) || 0
+                parseFloat(goals.sleep) || 0,
+                parseInt(goals.steps) || 0,
+                todayLog.distance || 0
             );
             setMessage("Goals updated! Time to conquer the day! 🚀");
             loadData();
@@ -133,7 +140,8 @@ const GoalSetter = () => {
     const goalTypes = [
         { key: 'calories', label: 'Calories', icon: '🔥', unit: 'kcal', color: 'var(--primary)', step: '1' },
         { key: 'water', label: 'Water', icon: '💧', unit: 'L', color: '#0ea5e9', step: '0.1' },
-        { key: 'sleep', label: 'Sleep', icon: '😴', unit: 'h', color: '#8b5cf6', step: '0.1' }
+        { key: 'sleep', label: 'Sleep', icon: '😴', unit: 'h', color: '#8b5cf6', step: '0.1' },
+        { key: 'steps', label: 'Steps', icon: '🦶', unit: 'steps', color: '#10b981', step: '100' }
     ];
 
     const processedChartData = useMemo(() => {
@@ -149,13 +157,14 @@ const GoalSetter = () => {
                 date: dateStr,
                 caloriesAchieved: log.dailyCalorieTarget > 0 ? Math.min(Math.round((calIntake / log.dailyCalorieTarget) * 100), 100) : 0,
                 waterAchieved: log.dailyWaterTarget > 0 ? Math.min(Math.round((log.waterIntake / log.dailyWaterTarget) * 100), 100) : 0,
-                sleepAchieved: log.dailySleepTarget > 0 ? Math.min(Math.round((log.sleepDuration / log.dailySleepTarget) * 100), 100) : 0
+                sleepAchieved: log.dailySleepTarget > 0 ? Math.min(Math.round((log.sleepDuration / log.dailySleepTarget) * 100), 100) : 0,
+                stepsAchieved: log.dailyStepsTarget > 0 ? Math.min(Math.round((log.steps / log.dailyStepsTarget) * 100), 100) : 0
             };
         });
     }, [history, meals]);
 
     return (
-        <div className="container" style={{ paddingTop: '80px', maxWidth: '1000px' }}>
+        <div className="container" style={{ paddingTop: '80px', maxWidth: '1200px' }}>
             <div className="dashboard-header" style={{ marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '2.5rem', margin: 0, fontWeight: '800' }}>Goal Center</h2>
                 <div style={{ color: 'var(--text-muted)', marginTop: '5px', fontSize: '1.1rem' }}>
@@ -163,14 +172,14 @@ const GoalSetter = () => {
                 </div>
             </div>
 
-            {/* Suggested Health Targets (Macros) - NEW */}
+            {/* Suggested Health Targets (Macros) */}
             {plan && (
                 <div style={{ marginBottom: '40px' }}>
                     <h3 style={{ margin: '0 0 20px 0', fontSize: '1.2rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" /><line x1="16" y1="8" x2="2" y2="22" /><line x1="17.5" y1="15" x2="9" y2="15" /></svg>
                         Scientific Health Targets
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '25px' }}>
                         {[
                             { label: 'Daily Calories', value: plan.dailyCalories, unit: 'kcal', color: '#f59e0b', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></svg> },
                             { label: 'Protein Target', value: plan.proteinGrams, unit: 'g', color: '#ef4444', icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.4 15.4c.6.6 2.4.6 3 0s.6-2.4 0-3-2.4-.6-3 0-.6 2.4 0 3Z" /><path d="M12.5 12.5c-.6-.6-2.4-.6-3 0s-.6 2.4 0 3 2.4.6 3 0 .6-2.4 0-3Z" /><path d="M11.5 11.5c-4-3-8-1-9 6s7 8 9 6Z" /></svg> },
@@ -190,7 +199,7 @@ const GoalSetter = () => {
             )}
 
             {/* Main Content Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '40px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '40px', alignItems: 'start' }}>
                 {/* Inputs Column */}
                 <div className="glass-card" style={{ padding: '30px' }}>
                     <h3 style={{ margin: '0 0 25px 0', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -222,36 +231,38 @@ const GoalSetter = () => {
                 </div>
 
                 {/* Status Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div className="glass-card" style={{ padding: '30px', flex: 1 }}>
-                        <h3 style={{ margin: '0 0 25px 0', fontSize: '1.2rem' }}>Live Performance</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                    <div className="glass-card" style={{ padding: '35px', flex: 1 }}>
+                        <h3 style={{ margin: '0 0 30px 0', fontSize: '1.2rem' }}>Live Performance</h3>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                        {/* Circle grid updated to use 50px gap and 120px size */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '30px' }}>
                             {goalTypes.map(type => {
                                 const prog = calculateProgress(stats[type.key], goals[type.key]);
                                 const fb = getFeedback(type.key, stats[type.key], goals[type.key]);
 
                                 return (
                                     <div key={type.key} style={{ textAlign: 'center' }}>
-                                        <div style={{ position: 'relative', width: '100px', height: '100px', margin: '0 auto 15px' }}>
-                                            <svg width="100" height="100" viewBox="0 0 100 100">
-                                                <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
+                                        <div style={{ position: 'relative', width: '110px', height: '110px', margin: '0 auto 15px' }}>
+                                            <svg width="110" height="110" viewBox="0 0 110 110">
+                                                <circle cx="55" cy="55" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="7" />
                                                 <circle
-                                                    cx="50" cy="50" r="45" fill="none"
-                                                    stroke={type.color} strokeWidth="6"
-                                                    strokeDasharray="282.7"
-                                                    strokeDashoffset={282.7 - (282.7 * prog) / 100}
+                                                    cx="55" cy="55" r="50" fill="none"
+                                                    stroke={type.color} strokeWidth="7"
+                                                    strokeDasharray="314.16"
+                                                    strokeDashoffset={314.16 - (314.16 * prog) / 100}
                                                     strokeLinecap="round"
                                                     style={{ transition: 'stroke-dashoffset 0.8s ease' }}
                                                 />
                                             </svg>
-                                            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '1.2rem', fontWeight: '800' }}>
+                                            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-main)' }}>
                                                 {prog}%
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: '700', color: fb.color }}>{fb.text}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                            {stats[type.key]} / {parseFloat(goals[type.key]) || '0'} {type.unit}
+                                        <div style={{ fontSize: '0.9rem', fontWeight: '800', color: fb.color, marginBottom: '4px' }}>{fb.text}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+                                            {stats[type.key]} / {parseFloat(goals[type.key]) || '0'}
+                                            <div style={{ fontSize: '0.65rem', opacity: 0.8 }}>{type.unit}</div>
                                         </div>
                                     </div>
                                 );
@@ -262,9 +273,7 @@ const GoalSetter = () => {
                     <div className="glass-card" style={{
                         padding: '20px',
                         background: 'rgba(255,255,255,0.03)',
-                        borderLeft: '4px solid #f59e0b',
-                        maxWidth: '500px',
-                        margin: '0 auto'
+                        borderLeft: '5px solid #f59e0b'
                     }}>
                         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                             <div style={{ color: '#f59e0b', fontSize: '1.2rem' }}>💡</div>
@@ -330,7 +339,8 @@ const GoalSetter = () => {
                     metrics={[
                         { key: 'caloriesAchieved', label: 'Calories (%)', color: '#f59e0b' }, // Amber/Orange for calories
                         { key: 'waterAchieved', label: 'Water (%)', color: '#0ea5e9' },
-                        { key: 'sleepAchieved', label: 'Sleep (%)', color: '#8b5cf6' }
+                        { key: 'sleepAchieved', label: 'Sleep (%)', color: '#8b5cf6' },
+                        { key: 'stepsAchieved', label: 'Steps (%)', color: '#10b981' }
                     ]}
                 />
             </div>

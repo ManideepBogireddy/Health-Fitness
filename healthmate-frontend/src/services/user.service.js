@@ -12,7 +12,7 @@ const getHealthPlan = () => {
     return api.get("/user/plan");
 };
 
-const logDailyStats = (date, weight, caloriesBurned, waterIntake, sleepDuration, notes, dailyCalorieTarget, dailyWaterTarget, dailySleepTarget) => {
+const logDailyStats = (date, weight, caloriesBurned, waterIntake, sleepDuration, notes, dailyCalorieTarget, dailyWaterTarget, dailySleepTarget, steps, distance) => {
     return api.post("/analytics/log", {
         date,
         weight,
@@ -22,7 +22,9 @@ const logDailyStats = (date, weight, caloriesBurned, waterIntake, sleepDuration,
         notes,
         dailyCalorieTarget,
         dailyWaterTarget,
-        dailySleepTarget
+        dailySleepTarget,
+        steps,
+        distance
     });
 }
 

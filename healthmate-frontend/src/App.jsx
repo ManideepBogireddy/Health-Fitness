@@ -14,6 +14,8 @@ import WorkoutTracker from "./pages/WorkoutTracker";
 import MealTracker from "./pages/MealTracker";
 import HealthTracker from "./pages/HealthTracker";
 import GoalSetter from "./pages/GoalSetter";
+import HelpCenter from "./pages/HelpCenter";
+import Chatbot from "./components/Chatbot";
 import "./App.css";
 
 function App() {
@@ -49,9 +51,13 @@ function App() {
             <Route path="/goal-center" element={
               <PrivateRoute><GoalSetter /></PrivateRoute>
             } />
+            <Route path="/help-center" element={
+              <PrivateRoute><HelpCenter /></PrivateRoute>
+            } />
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
         </div>
+        <Chatbot />
       </AuthProvider>
     </Router>
   );

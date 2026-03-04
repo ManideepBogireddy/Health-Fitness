@@ -26,8 +26,7 @@ public class HealthService {
         Optional<HealthPlan> existingPlan = healthPlanRepository.findByUserId(userId);
         if (existingPlan.isPresent()) {
             HealthPlan plan = existingPlan.get();
-            // If the plan is old (different day) or missing AI suggestions, regenerate it
-            // automatically
+
             if (plan.getMealSuggestions() == null || plan.getMealSuggestions().isEmpty() ||
                     plan.getLastUpdated() == null || !plan.getLastUpdated().equals(LocalDate.now())) {
                 return regeneratePlan(userId);
@@ -56,13 +55,9 @@ public class HealthService {
         String healthGoal = (user.getHealthGoal() != null) ? user.getHealthGoal().toLowerCase() : "lose weight";
         String activity = (user.getActivityLevel() != null) ? user.getActivityLevel().toLowerCase() : "lightly active";
 
-        // 1. Calculate BMR (Mifflin-St Jeor Formula)
-        // Using -80 as a neutral constant since gender isn't tracked (Men +5, Women
-        // -161)
         double bmr = (10 * weight) + (6.25 * height) - (5 * age) - 80;
 
-        // 2. Calculate TDEE (Total Daily Energy Expenditure) based on Activity Level
-        double tdeeMultiplier = 1.2; // Default Sedentary
+        double tdeeMultiplier = 1.2;
         if (activity.contains("light"))
             tdeeMultiplier = 1.375;
         else if (activity.contains("medium"))
@@ -74,32 +69,32 @@ public class HealthService {
 
         double tdee = bmr * tdeeMultiplier;
 
-        // 3. Adjust Calories for Health Goal
         int dailyCals = (int) tdee;
-        double proteinRatio = 0.25, carbsRatio = 0.45, fatsRatio = 0.30;
-
         if (healthGoal.contains("loss")) {
             dailyCals -= 500;
-            proteinRatio = 0.35; // Higher protein for muscle preservation
-            carbsRatio = 0.35;
-            fatsRatio = 0.30;
         } else if (healthGoal.contains("muscle")) {
             dailyCals += 500;
-            proteinRatio = 0.30;
-            carbsRatio = 0.50; // Higher carbs for energy
-            fatsRatio = 0.20;
         }
 
-        // Ensure calories don't drop too low for safety
         if (dailyCals < 1200)
             dailyCals = 1200;
 
-        // 4. Calculate Macro Grams
-        int proteinG = (int) ((dailyCals * proteinRatio) / 4);
-        int carbsG = (int) ((dailyCals * carbsRatio) / 4);
-        int fatsG = (int) ((dailyCals * fatsRatio) / 9);
+        int proteinG, fatsG, carbsG;
 
-        // 5. AI Smart Meal Planner - Distribute Macros across meals
+        if (healthGoal.contains("loss")) {
+            proteinG = (int) (weight * 1.8); // 1.8g per kg for weight loss
+            fatsG = (int) (weight * 0.8); // 0.8g per kg
+        } else if (healthGoal.contains("muscle")) {
+            proteinG = (int) (weight * 2.2); // 2.2g per kg for muscle gain
+            fatsG = (int) (weight * 1.0); // 1.0g per kg
+        } else {
+            proteinG = (int) (weight * 1.6); // 1.6g per kg for maintenance
+            fatsG = (int) (weight * 0.8); // 0.8g per kg
+        }
+
+        int remainingCals = dailyCals - (proteinG * 4) - (fatsG * 9);
+        carbsG = Math.max(0, remainingCals / 4);
+
         List<HealthPlan.MealSuggestion> mealSuggestions = new ArrayList<>();
 
         // Distribution ratios: Breakfast (25%), Lunch (35%), Snack (10%), Dinner (30%)
@@ -108,13 +103,11 @@ public class HealthService {
         mealSuggestions.add(createMealSuggestion("Snack", 0.10, dailyCals, proteinG, carbsG, fatsG, healthGoal));
         mealSuggestions.add(createMealSuggestion("Dinner", 0.30, dailyCals, proteinG, carbsG, fatsG, healthGoal));
 
-        // Simple Rule Engine for Plans
         List<String> diet = new ArrayList<>();
         List<String> exercise = new ArrayList<>();
         String water = "2.5 Liters";
         String sleep = "7-8 Hours";
 
-        // ... existing diet logic ...
         if (healthGoal.contains("loss")) {
             diet.add("Breakfast: Oatmeal with Berries");
             diet.add("Lunch: Grilled Chicken Salad");
@@ -123,7 +116,7 @@ public class HealthService {
             diet.add("Focus: Calorie Deficit & High Fiber");
         } else if (healthGoal.contains("muscle")) {
             diet.add("Breakfast: Eggs + Whole Wheat Toast");
-            diet.add("Lunch: Brown Rice + Lean Beef/Chicken");
+            diet.add("Lunch: Brown Rice + Grilled Chicken / Paneer");
             diet.add("Dinner: Quinoa + Salmon");
             diet.add("Snack: Protein Shake / Greek Yogurt");
             diet.add("Focus: Hypertrophy & Progressive Overload");
@@ -132,7 +125,6 @@ public class HealthService {
             diet.add("Limit Sugar and Processed Foods");
         }
 
-        // Exercise Logic
         if (activity.contains("low") || activity.contains("sedentary")) {
             exercise.add("Daily 30 min brisk walk");
             exercise.add("Light Yoga / Stretching");
@@ -144,11 +136,20 @@ public class HealthService {
             exercise.add("Heavy Weight Training 4x a week");
         }
 
-        // Custom adjustments based on BMI
-        if (category.equals("Obese")) {
+        if (category.equals("Underweight")) {
+            diet.add("Priority: Increase healthy calorie-dense foods (nuts, avocados, seeds)");
+            exercise.add("Focus on Strength Training to build muscle mass");
+        } else if (category.equals("Overweight")) {
+            diet.add("Focus: Increase fiber and lean protein for satiety");
+            exercise.add("Combined Approach: Cardio + Resistance training");
+        } else if (category.equals("Obese")) {
+            diet.add("Priority: Controlled portion sizes and low glycemic index foods");
             exercise.clear();
-            exercise.add("Low Impact Cardio (Swimming/Walking) - Start Slow");
-            exercise.add("Consult a doctor before intense training");
+            exercise.add("Safe Start: Low impact cardio (Swimming, Cycling, or Brisk Walking)");
+            exercise.add("Important: Consult a professional before high-intensity training");
+        } else {
+            diet.add("Goal: Maintain balanced nutrition with whole foods");
+            exercise.add("Sustainability: Stay consistent with regular active lifestyle");
         }
 
         String goalName = user.getHealthGoal();
@@ -165,7 +166,6 @@ public class HealthService {
         int c = (int) (totalC * ratio);
         int f = (int) (totalF * ratio);
 
-        int dayIndex = LocalDate.now().getDayOfWeek().getValue(); // 1 (Mon) to 7 (Sun)
         List<String> options = new ArrayList<>();
 
         if (goal.contains("loss")) {
@@ -236,7 +236,7 @@ public class HealthService {
                         "Chicken Masala / Soya Chunk Curry with Brown Rice",
                         "Fish Curry with Red Rice and Sauted Greens",
                         "Mutton Curry (Lean) with 2 Bajra Rotis",
-                        "Beef Stir-fry with Broccoli and Quinoa",
+                        "Chicken & Broccoli Stir-fry with Quinoa",
                         "High Protein Pasta (Lentil Pasta) with Bolognese Sauce",
                         "Turkey Meatballs with Whole Wheat Spaghetti",
                         "Chickpea and Spinach Curry with Parboiled Rice",
@@ -249,7 +249,7 @@ public class HealthService {
                         "Whey Protein with Milk and 1 Banana",
                         "Handful of Almonds and Walnuts with Greek Yogurt",
                         "Cottage Steel Bowl with Berries and Honey",
-                        "Biltong or Beef Jerky (Low sodium)",
+                        "Roasted Chickpeas or Chicken Strips",
                         "Hard-boiled eggs (3-4) with mustard",
                         "Protein Bar (Home-made or high quality)",
                         "Tuna Salad (In water) on Whole Wheat Crackers",
@@ -262,10 +262,10 @@ public class HealthService {
                         "Keema Matar (Lean) with 1 Multigrain Roti",
                         "Baked Salmon with Broccoli and Brown Rice",
                         "Tofu and Mixed Vegetable Stir-fry with Cashews",
-                        "Beef Stew with Root Vegetables",
+                        "Lentil & Vegetable Stew",
                         "Grilled Shrimp Tacos (Whole wheat tortillas)",
                         "Lentil Loaf with Roast Potatoes",
-                        "Pork Tenderloin with Apple Sauce and Green Beans",
+                        "Grilled Chicken with Mushroom Sauce",
                         "Quinoa and Black Bean Chili"));
             }
         } else { // Balanced
@@ -320,11 +320,8 @@ public class HealthService {
             }
         }
 
-        // Logic to pick primary suggestion:
-        // Day 3, 6 (Wed, Sat): dayIndex % 3 == 0 -> User gets first meal
-        // Day 1, 4, 7 (Mon, Thu, Sun): dayIndex % 3 == 1 -> User gets second meal
-        // Day 2, 5 (Tue, Fri): dayIndex % 3 == 2 -> User gets third meal
-        int primaryIndex = dayIndex % 3;
+        int dayOfMonth = LocalDate.now().getDayOfMonth();
+        int primaryIndex = dayOfMonth % options.size();
         String suggestion = options.get(primaryIndex);
 
         // Alternatives are all options except the primary one

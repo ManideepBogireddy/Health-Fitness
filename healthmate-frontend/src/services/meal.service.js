@@ -1,27 +1,15 @@
-import axios from 'axios';
-import authService from './auth.service';
-
-const API_URL = "http://localhost:8080/api/meals";
-
-const getHeader = () => {
-    const user = authService.getCurrentUser();
-    return {
-        headers: {
-            'Authorization': user ? `Bearer ${user.token}` : ''
-        }
-    };
-};
+import api from "./api";
 
 const logMeal = (mealData) => {
-    return axios.post(API_URL, mealData, getHeader());
+    return api.post("/meals", mealData);
 };
 
 const getUserMeals = () => {
-    return axios.get(`${API_URL}/user`, getHeader());
+    return api.get("/meals/user");
 };
 
 const deleteMeal = (id) => {
-    return axios.delete(`${API_URL}/${id}`, getHeader());
+    return api.delete(`/meals/${id}`);
 };
 
 const mealService = {

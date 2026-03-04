@@ -5,12 +5,13 @@ import {
     CategoryScale,
     LinearScale,
     BarElement,
+    BarController,
     Title,
     Tooltip,
     Legend
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, BarController, Title, Tooltip, Legend);
 
 /**
  * Reusable Bar Chart component with Date Range Filtering
@@ -77,6 +78,7 @@ const ChartComponent = ({
             backgroundColor: metric.color || 'var(--primary-color)',
             borderRadius: 6,
             borderSkipped: false,
+            yAxisID: metric.yAxisID || 'y',
         }))
     };
 
@@ -107,9 +109,27 @@ const ChartComponent = ({
             y: {
                 stacked: stacked,
                 beginAtZero: true,
+                position: 'left',
                 grid: {
                     color: colors.grid,
                     drawBorder: false
+                },
+                ticks: {
+                    color: colors.text,
+                    font: {
+                        family: "'Outfit', sans-serif",
+                        size: 11
+                    },
+                    padding: 10
+                }
+            },
+            y1: {
+                stacked: stacked,
+                beginAtZero: true,
+                position: 'right',
+                display: metrics.some(m => m.yAxisID === 'y1'),
+                grid: {
+                    drawOnChartArea: false, // only want the grid lines for one axis
                 },
                 ticks: {
                     color: colors.text,

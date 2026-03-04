@@ -23,8 +23,20 @@ public class JwtUtils {
     private int jwtExpirationMs;
 
     public String generateJwtToken(Authentication authentication) {
-        UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal(); // This cast fails for OAuth2
-        return generateTokenFromUsername(userPrincipal.getUsername());
+        Object principal = authentication.getPrincipal();
+        String username;
+
+        if (principal instanceof UserDetailsImpl) {
+            username = ((UserDetailsImpl) principal).getUsername();
+        } else if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
+            username = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
+        } else if (principal instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
+            username = ((org.springframework.security.oauth2.core.user.OAuth2User) principal).getAttribute("email");
+        } else {
+            username = principal.toString();
+        }
+
+        return generateTokenFromUsername(username);
     }
 
     public String generateTokenFromUsername(String username) {

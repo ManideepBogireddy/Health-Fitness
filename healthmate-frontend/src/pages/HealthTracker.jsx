@@ -11,6 +11,8 @@ const HealthTracker = () => {
         weight: '',
         waterIntake: '',
         sleepDuration: '',
+        steps: '',
+        distance: '',
         notes: ''
     });
     const [profile, setProfile] = useState(null);
@@ -46,10 +48,18 @@ const HealthTracker = () => {
                 return logDateStr === today;
             });
             if (todayLog) {
+                // Calculate distance if it's missing in the log but steps are present
+                let distance = todayLog.distance;
+                if (!distance && todayLog.steps) {
+                    distance = ((todayLog.steps * 0.762) / 1000).toFixed(2);
+                }
+
                 setFormData({
                     weight: todayLog.weight || '',
                     waterIntake: todayLog.waterIntake || '',
                     sleepDuration: todayLog.sleepDuration || '',
+                    steps: todayLog.steps || '',
+                    distance: distance || '',
                     notes: todayLog.notes || ''
                 });
             }
@@ -60,7 +70,17 @@ const HealthTracker = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
+        let newFormData = { ...formData, [name]: value };
+
+        // Automatically calculate distance if steps change
+        if (name === 'steps') {
+            const steps = parseInt(value) || 0;
+            // Average stride length is ~0.762 meters (2.5 feet)
+            const distance = (steps * 0.762) / 1000;
+            newFormData.distance = distance.toFixed(2);
+        }
+
+        setFormData(newFormData);
     };
 
     const handleSubmit = async (e) => {
@@ -74,7 +94,10 @@ const HealthTracker = () => {
                 0, // caloriesBurned handled by workout tracker
                 parseFloat(formData.waterIntake) || 0,
                 parseFloat(formData.sleepDuration) || 0,
-                formData.notes
+                formData.notes,
+                0, 0, 0, // dailyCalorieTarget, dailyWaterTarget, dailySleepTarget
+                parseInt(formData.steps) || 0,
+                parseFloat(formData.distance) || 0
             );
             setMessage("Vitals updated successfully! ✨");
             loadHistory();
@@ -94,6 +117,7 @@ const HealthTracker = () => {
                 <div className="stat-value">Track your daily wellness 🧘‍♂️</div>
             </div>
 
+
             {/* Chart Section */}
             <div style={{ marginTop: '30px', marginBottom: '30px' }}>
                 <ChartComponent
@@ -103,14 +127,15 @@ const HealthTracker = () => {
                     metrics={[
                         { key: 'weight', label: 'Weight (kg)', color: '#6366f1' },
                         { key: 'waterIntake', label: 'Water (L)', color: '#0ea5e9' },
-                        { key: 'sleepDuration', label: 'Sleep (h)', color: '#8b5cf6' }
+                        { key: 'sleepDuration', label: 'Sleep (h)', color: '#8b5cf6' },
+                        { key: 'steps', label: 'Steps', color: '#10b981', yAxisID: 'y1' },
+                        { key: 'distance', label: 'Dist (km)', color: '#f59e0b' }
                     ]}
                 />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '30px' }}>
-
-                {/* Form Section */}
+                {/* ... existing form and BMICalculator ... */}
                 <div className="glass-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <h3>Update Today's Stats</h3>
                     <form onSubmit={handleSubmit}>
@@ -127,6 +152,17 @@ const HealthTracker = () => {
                         <div className="form-group">
                             <label className="glass-label">Sleep Duration (Hours)</label>
                             <input type="number" step="0.1" name="sleepDuration" className="glass-input" placeholder="e.g. 8.0" value={formData.sleepDuration} onChange={handleInputChange} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div className="form-group">
+                                <label className="glass-label">Steps</label>
+                                <input type="number" name="steps" className="glass-input" placeholder="e.g. 10000" value={formData.steps} onChange={handleInputChange} />
+                            </div>
+                            <div className="form-group">
+                                <label className="glass-label">Distance (km)</label>
+                                <input type="number" step="0.01" name="distance" className="glass-input" placeholder="e.g. 5.2" value={formData.distance} onChange={handleInputChange} />
+                            </div>
                         </div>
 
                         <div className="form-group">
@@ -158,6 +194,8 @@ const HealthTracker = () => {
                                     <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                         <th style={{ padding: '12px', textAlign: 'left' }}>Date</th>
                                         <th style={{ padding: '12px', textAlign: 'center' }}>Weight</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>Steps</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>Dist</th>
                                         <th style={{ padding: '12px', textAlign: 'center' }}>Water</th>
                                         <th style={{ padding: '12px', textAlign: 'center' }}>Sleep</th>
                                     </tr>
@@ -167,6 +205,8 @@ const HealthTracker = () => {
                                         <tr key={log.id || log.date} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                             <td style={{ padding: '12px' }}>{log.date}</td>
                                             <td style={{ padding: '12px', textAlign: 'center' }}>{log.weight} kg</td>
+                                            <td style={{ padding: '12px', textAlign: 'center' }}>{log.steps || 0}</td>
+                                            <td style={{ padding: '12px', textAlign: 'center' }}>{(log.distance || 0).toFixed(1)} km</td>
                                             <td style={{ padding: '12px', textAlign: 'center' }}>{log.waterIntake} L</td>
                                             <td style={{ padding: '12px', textAlign: 'center' }}>{log.sleepDuration} h</td>
                                         </tr>

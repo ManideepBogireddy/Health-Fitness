@@ -27,13 +27,17 @@ public class DailyLog {
     private double dailyWaterTarget; // liters
     @JsonProperty("dailySleepTarget")
     private double dailySleepTarget; // hours
+    @JsonProperty("dailyStepsTarget")
+    private int dailyStepsTarget;
+    private int steps;
+    private double distance; // km
 
     public DailyLog() {
     }
 
     public DailyLog(String userId, LocalDate date, double weight, int caloriesBurned, Double waterIntake,
             Double sleepDuration, String notes, int dailyCalorieTarget, double dailyWaterTarget,
-            double dailySleepTarget) {
+            double dailySleepTarget, int steps, double distance) {
         this.userId = userId;
         this.date = date;
         this.weight = weight;
@@ -44,6 +48,8 @@ public class DailyLog {
         this.dailyCalorieTarget = dailyCalorieTarget;
         this.dailyWaterTarget = dailyWaterTarget;
         this.dailySleepTarget = dailySleepTarget;
+        this.steps = steps;
+        this.distance = distance;
     }
 
     // Overloaded constructor for backward compatibility
@@ -145,5 +151,29 @@ public class DailyLog {
 
     public void setDailySleepTarget(double dailySleepTarget) {
         this.dailySleepTarget = dailySleepTarget;
+    }
+
+    public int getDailyStepsTarget() {
+        return dailyStepsTarget;
+    }
+
+    public void setDailyStepsTarget(int dailyStepsTarget) {
+        this.dailyStepsTarget = dailyStepsTarget;
+    }
+
+    public int getSteps() {
+        return steps;
+    }
+
+    public void setSteps(int steps) {
+        this.steps = steps;
+    }
+
+    public double getDistance() {
+        return distance;
+    }
+
+    public void setDistance(double distance) {
+        this.distance = distance;
     }
 }
